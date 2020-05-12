@@ -13,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using BE.Models;
 using Microsoft.EntityFrameworkCore;
+using BE.Data.Repositories;
 
 namespace BE
 {
@@ -29,11 +30,12 @@ namespace BE
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-            services.AddSwaggerDocument();
+            
             services.AddDbContext<ArtworkContext>(options => 
             options.UseSqlServer(Configuration.GetConnectionString("ArtworkContext")));
-            services.AddCors(options => options.AddPolicy("AllowAllOrigins", builder => builder.AllowAnyOrigin()));
-            
+
+            services.AddScoped<ArtworkDataInitializer>();
+            services.AddScoped<IArtworkRepository, ArtworkRepository>();
             services.AddOpenApiDocument(c =>
             {
                 c.DocumentName = "apidocs";
@@ -41,10 +43,12 @@ namespace BE
                 c.Version = "v1";
                 c.Description = "The Artwork API documentation description.";
             });
+            
+            services.AddCors(options => options.AddPolicy("AllowAllOrigins", builder => builder.AllowAnyOrigin()));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ArtworkDataInitializer artworkDataInitializer)
         {
             if (env.IsDevelopment())
             {
@@ -59,14 +63,14 @@ namespace BE
 
             app.UseRouting();
 
-            app.UseAuthorization();
-
-            app.UseCors("AllowAllOrigins");
+            app.UseAuthorization();            
 
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
             });
+
+            artworkDataInitializer.InitializeData();
         }
     }
 }
